@@ -50,11 +50,6 @@
     .field-wrap { padding: 2px 1rem 8px; }
     .field-wrap input { width: 100%; height: 38px; padding: 0 10px; font-size: 14px; font-family: inherit; border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); -webkit-appearance: none; }
     .field-wrap input::placeholder { color: var(--text-faint); font-size: 13px; }
-    .simple-row { display: flex; flex-direction: column; gap: 4px; padding: 0.75rem 1rem; border-bottom: 0.5px solid var(--border); }
-    .simple-row:last-child { border-bottom: none; }
-    .simple-label { font-size: 14px; font-weight: 500; }
-    .simple-row input { width: 100%; height: 42px; padding: 0 10px; font-size: 15px; font-family: inherit; border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); -webkit-appearance: none; }
-    .simple-row input::placeholder { color: var(--text-faint); font-size: 13px; }
     .notes-wrap { padding: 0.75rem 1rem; }
     textarea { width: 100%; font-size: 15px; font-family: inherit; padding: 10px; border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); resize: vertical; min-height: 80px; -webkit-appearance: none; }
     .copy-btn { display: block; width: 100%; height: 52px; font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer; background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); margin-top: 0.5rem; }
@@ -84,15 +79,9 @@
     <div id="day2-body"></div>
   </div>
 
-  <div id="offday-card" style="display:none">
-    <div class="section-card">
-      <div class="section-header"><div class="day-label">off day skills</div></div>
-      <div id="offday-body"></div>
-    </div>
-    <div class="section-card">
-      <div class="section-header"><div class="day-label">cardio</div></div>
-      <div id="cardio-body"></div>
-    </div>
+  <div id="offday-card" class="section-card" style="display:none">
+    <div class="section-header"><div class="day-label">off day</div></div>
+    <div id="offday-body"></div>
   </div>
 
   <div class="section-card">
@@ -106,15 +95,16 @@
 <script>
   const day1Exercises = ["weighted pull-ups","incline bench","weighted dips","machine legs","cable rotation"];
   const day2Exercises = ["overhead press","lateral raises","barbell row","bicep curls","back extension holds","hinge"];
+  const offdayExercises = ["handstand pushup","front lever","planche","pistol squat","one arm pull up"];
   const hasNotes = ["machine legs","hinge","cable rotation"];
   const isSeconds = ["back extension holds"];
-  const offdayEx = ["planche progression","hspu progression","back lever progression"];
-  const cardioEx = ["bike"];
-  const state = { day1: {}, day2: {} };
+
+  const state = { day1: {}, day2: {}, offday: {} };
   day1Exercises.forEach(e => state.day1[e] = [{kg:"",reps:""}]);
   day2Exercises.forEach(e => state.day2[e] = [{kg:"",reps:""}]);
-  let activeDay = "day1";
+  offdayExercises.forEach(e => state.offday[e] = [{reps:"",note:""}]);
 
+  let activeDay = "day1";
   const now = new Date();
   document.getElementById("date-line").textContent = now.toLocaleDateString("en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
 
@@ -174,20 +164,47 @@
     });
   }
 
-  function renderSimple(containerId, exercises) {
-    const container = document.getElementById(containerId); container.innerHTML = "";
-    exercises.forEach(ex => {
-      const row = document.createElement("div"); row.className = "simple-row";
-      const label = document.createElement("div"); label.className = "simple-label"; label.textContent = ex;
-      const inp = document.createElement("input"); inp.type = "text"; inp.placeholder = "notes / variation"; inp.dataset.ex = ex;
-      row.appendChild(label); row.appendChild(inp); container.appendChild(row);
+  function renderOffday(containerId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+    offdayExercises.forEach(exName => {
+      const sets = state.offday[exName];
+      const block = document.createElement("div");
+      block.className = "ex-block";
+      const header = document.createElement("div");
+      header.className = "ex-header"; header.textContent = exName;
+      block.appendChild(header);
+      const nw = document.createElement("div"); nw.className = "field-wrap";
+      const ni = document.createElement("input");
+      ni.type = "text"; ni.placeholder = "variation / notes"; ni.dataset.notesFor = exName;
+      nw.appendChild(ni); block.appendChild(nw);
+      sets.forEach((set, setIdx) => {
+        const row = document.createElement("div"); row.className = "set-row";
+        const label = document.createElement("span"); label.className = "set-label"; label.textContent = `s${setIdx+1}`;
+        const repsIn = document.createElement("input");
+        repsIn.type = "text"; repsIn.inputMode = "numeric";
+        repsIn.placeholder = "reps"; repsIn.value = set.reps;
+        repsIn.style.maxWidth = "none";
+        repsIn.addEventListener("input", e => { state.offday[exName][setIdx].reps = e.target.value; });
+        row.appendChild(label); row.appendChild(repsIn);
+        if (sets.length > 1) {
+          const rm = document.createElement("button"); rm.className = "rm-btn"; rm.textContent = "×";
+          rm.onclick = () => { state.offday[exName].splice(setIdx,1); renderOffday(containerId); };
+          row.appendChild(rm);
+        }
+        block.appendChild(row);
+      });
+      const addRow = document.createElement("div"); addRow.className = "add-set-row";
+      const addBtn = document.createElement("button"); addBtn.className = "add-set-btn"; addBtn.textContent = "+ add set";
+      addBtn.onclick = () => { state.offday[exName].push({reps:""}); renderOffday(containerId); };
+      addRow.appendChild(addBtn); block.appendChild(addRow);
+      container.appendChild(block);
     });
   }
 
   renderExercises("day1-body", day1Exercises, "day1");
   renderExercises("day2-body", day2Exercises, "day2");
-  renderSimple("offday-body", offdayEx);
-  renderSimple("cardio-body", cardioEx);
+  renderOffday("offday-body");
 
   function formatDay(dayKey, exercises) {
     const warmupEl = document.querySelector(`[data-warmup="${dayKey}"]`);
@@ -201,17 +218,23 @@
     }).join("\n");
   }
 
+  function formatOffday() {
+    return offdayExercises.map(ex => {
+      const sets = state.offday[ex];
+      const setStr = sets.map((s,i) => `set ${i+1}: ${s.reps||"—"} reps`).join(", ");
+      const noteEl = document.querySelector(`[data-notes-for="${ex}"]`);
+      const note = noteEl && noteEl.value ? ` (${noteEl.value})` : "";
+      return `  ${ex}${note}: ${setStr}`;
+    }).join("\n");
+  }
+
   function copyLog() {
     const dateStr = now.toLocaleDateString("en-GB",{year:"numeric",month:"long",day:"numeric"});
     const notes = document.getElementById("notes-field").value||"—";
     let text = "";
     if (activeDay==="day1") text = `workout log — ${dateStr}\n\nday 1\n${formatDay("day1",day1Exercises)}\n\nnotes: ${notes}`;
     else if (activeDay==="day2") text = `workout log — ${dateStr}\n\nday 2\n${formatDay("day2",day2Exercises)}\n\nnotes: ${notes}`;
-    else {
-      const offNotes = Array.from(document.querySelectorAll("#offday-body input")).map(i=>`  ${i.dataset.ex}: ${i.value||"—"}`).join("\n");
-      const cardioNotes = Array.from(document.querySelectorAll("#cardio-body input")).map(i=>`  ${i.dataset.ex}: ${i.value||"—"}`).join("\n");
-      text = `workout log — ${dateStr}\n\noff day skills\n${offNotes}\n\ncardio\n${cardioNotes}\n\nnotes: ${notes}`;
-    }
+    else text = `workout log — ${dateStr}\n\noff day\n${formatOffday()}\n\nnotes: ${notes}`;
     const btn = document.querySelector(".copy-btn");
     navigator.clipboard.writeText(text).then(() => {
       btn.textContent = "copied!"; setTimeout(() => btn.textContent = "copy log", 2000);
